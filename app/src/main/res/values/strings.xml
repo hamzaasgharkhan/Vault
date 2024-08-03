@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">Vault</string>
+    <string name="start_title">Vaults</string>
+    <string name="open_vault_title">Open Vault</string>
+    <string name="create_vault_title">Create Vault</string>
+    <string name="home_page_title">Home</string>
+    <string name="no_vaults">No Vaults</string>
+    <string name="create_vault_button">Create Vault</string>
+    <string name="create_directory_title">Create New Folder</string>
+    <string name="add_node_button">Add Node</string>
+    <string name="open_vault_button">Open Vault</string>
+    <string name="vault_name_placeholder">Vault Name</string>
+    <string name="vault_name_placeholder_error">Vault Name*</string>
+    <string name="vault_password_placeholder">Password</string>
+    <string name="vault_password_placeholder_error">Password*</string>
+    <string name="error_code_0_message">""</string>
+    <string name="error_code_1_message">Vault Already Exists</string>
+    <string name="error_code_101_message">Name Cannot Be Blank</string>
+    <string name="error_code_201_message">Password Cannot Be Blank</string>
+    <string name="create_directory_placeholder">New Directory</string>
+    <string name="create_directory_label">Name</string>
+    <string name="rename_title">Rename</string>
+    <string name="rename_placeholder">New Name</string>
+    <string name="rename_label">Name</string>
+    <string name="delete_title">Confirm Deletion</string>
+    <string name="delete_text">"Are you sure you want to delete:"</string>
+    <string name="move_title_start">Moving</string>
+    <string name="copy_title_start">Copying</string>
+    <string name="confirm_operation_button">Confirm Operation</string>
+    <string name="select_copy_destination">Copy Here</string>
+    <string name="select_move_destination">Move Here</string>
+    <string name="confirm_exit_vault_title">Exit Vault</string>
+    <string name="confirm_exit_vault_text">Are you sure you want to leave the vault?</string>
+    <string name="add_media_button">Add Media Files</string>
+    <string name="add_file_button">Add File</string>
+    <string name="add_directory_button">Add Directory</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="padding_small">8dp</dimen>
+    <dimen name="padding_medium">16dp</dimen>
+    <dimen name="padding_large">24dp</dimen>
+    <dimen name="padding_extra_large">32dp</dimen>
+    <dimen name="padding_card">32dp</dimen>
+    <dimen name="list_thumbnail_size">42dp</dimen>
+    <dimen name="list_view_thumbnail_separator">14dp</dimen>
+</resources>
