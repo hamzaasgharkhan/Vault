@@ -1,6 +1,13 @@
 package com.fyp.vault.utilities
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
 import java.util.Locale
+import kotlin.math.max
 
 fun calculateSizeInStringFormat(size: Long): String {
     val levels: Array<String> = arrayOf("B", "kB", "MB", "GB", "TB", "PB")
@@ -15,4 +22,83 @@ fun calculateSizeInStringFormat(size: Long): String {
         }
     }
     return String.format(Locale.getDefault() ,"%.1f %s", runningSize, levels[level])
+}
+
+fun getInputStreamFromBitmap(bitmap: Bitmap): InputStream {
+    val outputStream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+    return ByteArrayInputStream(outputStream.toByteArray())
+}
+
+fun createThumbnailAsStream(inputStream: InputStream, maxDimension: Int): InputStream {
+    // Decode the image from the InputStream
+    val originalBitmap = BitmapFactory.decodeStream(inputStream)
+        ?: throw IOException("Could not decode image from input stream.")
+
+    // Get original bitmap dimensions
+    val originalWidth = originalBitmap.width
+    val originalHeight = originalBitmap.height
+
+    // Calculate aspect ratio
+    val aspectRatio = originalWidth.toFloat() / originalHeight
+
+    // Calculate new dimensions while preserving the aspect ratio
+    val newWidth: Int
+    val newHeight: Int
+
+    if (originalWidth > originalHeight) {
+        // Image is wider than it is tall
+        newWidth = minOf(maxDimension, originalWidth)
+        newHeight = (newWidth / aspectRatio).toInt()
+    } else {
+        // Image is taller than it is wide
+        newHeight = minOf(maxDimension, originalHeight)
+        newWidth = (newHeight * aspectRatio).toInt()
+    }
+
+    // Create a scaled bitmap
+    val thumbnail = Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+
+    // Write the thumbnail to a ByteArrayOutputStream
+    val baos = ByteArrayOutputStream()
+    thumbnail.compress(Bitmap.CompressFormat.PNG, 100, baos) // Use JPEG or PNG depending on your needs
+    baos.flush()
+    // Convert ByteArrayOutputStream to ByteArrayInputStream
+    val bais = ByteArrayInputStream(baos.toByteArray())
+    baos.close() // Close the ByteArrayOutputStream
+    return bais
+}
+
+fun createThumbnailAsStream(bitmap: Bitmap, maxDimension: Int): InputStream{
+    val originalWidth = bitmap.width
+    val originalHeight = bitmap.height
+
+    // Calculate aspect ratio
+    val aspectRatio = originalWidth.toFloat() / originalHeight
+
+    // Calculate new dimensions while preserving the aspect ratio
+    val newWidth: Int
+    val newHeight: Int
+
+    if (originalWidth > originalHeight) {
+        // Image is wider than it is tall
+        newWidth = minOf(maxDimension, originalWidth)
+        newHeight = (newWidth / aspectRatio).toInt()
+    } else {
+        // Image is taller than it is wide
+        newHeight = minOf(maxDimension, originalHeight)
+        newWidth = (newHeight * aspectRatio).toInt()
+    }
+
+    // Create a scaled bitmap
+    val thumbnail = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+
+    // Write the thumbnail to a ByteArrayOutputStream
+    val baos = ByteArrayOutputStream()
+    thumbnail.compress(Bitmap.CompressFormat.PNG, 100, baos) // Use JPEG or PNG depending on your needs
+    baos.flush()
+    // Convert ByteArrayOutputStream to ByteArrayInputStream
+    val bais = ByteArrayInputStream(baos.toByteArray())
+    baos.close() // Close the ByteArrayOutputStream
+    return bais
 }

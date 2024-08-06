@@ -1,22 +1,32 @@
 package com.fyp.vault.ui
 
+import FileSystem.FileSystem
+import FileSystem.InputFile
 import android.app.Application
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.DocumentsContract
+import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.util.Log
+import android.util.Size
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import com.fyp.vault.Route
 import com.fyp.vault.data.Directory
 import com.fyp.vault.data.Node
 import com.fyp.vault.data.root
-import com.fyp.vault.data.vaults
+import com.fyp.vault.utilities.createThumbnailAsStream
+import com.fyp.vault.utilities.getInputStreamFromBitmap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.io.File
+import java.io.InputStream
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
+    val vaults: MutableList<String> = mutableListOf()
 
     // Android FILES
     private var selectedUris: List<Uri> = emptyList()
@@ -27,8 +37,28 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         /*TODO Delete the code that follows*/
     }
 
+    private lateinit var fileSystem: FileSystem;
+
+    /**
+     * Returns a list of the names of all available vaults
+     */
+
+    fun initVaults(){
+        vaults.clear()
+        val baseDirectory = app.filesDir
+        val directories = baseDirectory.listFiles { file -> file.isDirectory }
+        for (directory in directories){
+            val superBlock = File(directory, "super-block")
+            if (superBlock.isFile){
+                vaults.add(directory.name)
+            }
+        }
+    }
+
     fun handleFileSelection(){
-//            for (uri in uris){
+            for (uri in selectedUris){
+                addFile(uri)
+            }
 //            uri.encodedPath
 //            Log.d("[INTERNAL_VIEW_MODEL: SET_SELECTED_URI]", "Uri Scheme: ${uri.scheme} Path: ${uri.path} isAbsolute: ${uri.isAbsolute}")
 //            val inputStream= app.contentResolver.openInputStream(uri)
@@ -41,7 +71,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun handleDirectorySelection(){
-
+        for (uri in selectedUris){
+            addDirectory(uri)
+        }
     }
 
     // App State
@@ -56,28 +88,19 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////   Lock For Synchronization
-/////////   The general idea is: Whenever a method is causing synchronization issues, set the lock
-/////////   at the caller and then wait till the lock is not released. The lock can only be released
-/////////   by this ViewModel.
-////////////////////////////////////////////////////////////////////////////////////////////////////
-    var lock: Boolean = false
-        private set
-
-    fun setLock(){lock = true}
-
-    private fun releaseLock(){lock = false}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////   Vault Access (External)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    fun navigateTo(route:String){
+        _appState.update{currentValue ->
+            currentValue.copy(route = route)
+        }
+    }
 
     fun setError(error: Error?){
         _appState.update{currentValue ->
             currentValue.copy(error = error)
         }
-        releaseLock()
     }
 
     fun clearError(){
@@ -88,17 +111,18 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         _appState.update{currentValue ->
             currentValue.copy(vault = name)
         }
-        releaseLock()
+        Log.d("[INTERNAL_VIEW_MODEL: SET_VAULT_NAME]", "Name: ${appState.value.vault}")
     }
 
 
     fun selectVault(name: String){
-        setVaultName(name)
+        _appState.update{currentValue ->
+            currentValue.copy(vault = name, route = Route.OpenVault.name)
+        }
     }
 
     fun clearVaultSelection(){
         setVaultName("")
-        releaseLock()
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,18 +143,25 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             // NO Errors, File System Can be Created
             Log.d("[INTERNAL_VIEW_MODE: CREATE_VAULT]", "HERE! error: ${appState.value.error}")
             _createVault(name, password)
+            navigateTo(Route.Vault.name)
         }
     }
 
     private fun _createVault(name: String, password: String){
         /*TODO Remove the dummy code*/
         vaults.add(name)
+        try {
+            fileSystem = FileSystem.createFileSystem(app.filesDir, name, password)
+        } catch (e: Exception){
+            /*TODO Throw Error Here in the UI*/
+        }
         _appState.value = AppState(vault = name)
         pathStack.add(_getRoot())
+        fileSystem.createDirectory("/", "sheep")
+        fileSystem.createDirectory("/", "dark")
+        fileSystem.printTree()
         /*TODO Connect to the FileSystem CreateFileSystem Method*/
 
-        // RELEASE LOCK
-        releaseLock()
     }
 
     fun openVault(name: String, password: String){
@@ -143,15 +174,15 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             setError(Error.OpenVault_InvalidPassword_Blank)
         } else {
 //            TODO("This Place will handle the actual opening of the vault.")
-            releaseLock()
+
         }
         _openVault(name, password)
+        navigateTo(Route.Vault.name)
     }
 
     fun _openVault(name: String, password:String){
         _appState.value = AppState(vault = name)
         pathStack.add(_getRoot())
-        releaseLock()
     }
 
     private fun _updateState(vault: String, path: String){
@@ -163,14 +194,89 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////   Vault Internal Operations
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+    private fun getThumbnail(uri: Uri): InputStream?{
+        Log.d("THUMBNAIL", "${app.contentResolver.getType(uri)} ${uri.encodedAuthority}")
+//        val type = uri.lastPathSegment?.split(":")?.get(0) ?: return null
+        val type = app.contentResolver.getType(uri)?.split("/")?.get(0)
+        when (type){
+            "video" -> {
+                val metadataRetriever = MediaMetadataRetriever()
+                metadataRetriever.setDataSource(app.applicationContext, uri)
+                val bitmap = metadataRetriever.getFrameAtIndex(0) ?: return null
+                return createThumbnailAsStream(bitmap, 300)
+            }
+            "image" -> {
+                var thumbnail: InputStream? = null
+                app.contentResolver.openInputStream(uri).use {stream ->
+                    if (stream != null) {
+                        thumbnail =  createThumbnailAsStream(stream, 300)
+                    }
+                }
+                return thumbnail
+            }
+            "audio" -> {
+                return null
+            }
+            else -> {
+                return null
+            }
+        }
+    }
 
+    private fun getInputFileFromUri(uri: Uri): InputFile{
+        Log.d("INPUT_FILE: Authority", "${uri.authority}")
+        Log.d("VAULTS", "$vaults")
 
+        var name: String = ""
+        var parentPath: String = pathStack.last().path // FIX: CHANGE IT TO THE ACTUAL NODE getPath Method
+        var size: Long = -1
+        var lastModifiedTime: Long = 0  /*TODO Fix this to get the actual value*/
+        var creationTime: Long = 0  /*TODO Fix this to get the actual value*/
+        var fileInputStream: InputStream?
+        var thumbnailInputStream: InputStream? = null
+        val projection = arrayOf(
+            OpenableColumns.DISPLAY_NAME,
+            OpenableColumns.SIZE,
+            DocumentsContract.Document.COLUMN_LAST_MODIFIED
+        )
+        app.contentResolver.query(uri, projection, null, null, null)?.use{ cursor ->
+            if (cursor.moveToFirst()){
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                val lastModifiedIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+
+                name = cursor.getString(nameIndex)
+                size = cursor.getLong(sizeIndex)
+                lastModifiedTime = cursor.getLong(lastModifiedIndex)
+                creationTime = lastModifiedTime
+            }
+        }
+        fileInputStream = app.contentResolver.openInputStream(uri)
+        if (fileInputStream == null) {
+            throw Exception("FileInputStream is null")
+        }
+        if (name == "" || size == -1L){
+            throw Exception("Details were not loaded")
+        }
+        thumbnailInputStream = getThumbnail(uri)
+        Log.d("INPUT_FILE", "Name: $name | Size: $size | fileinputstream: $fileInputStream | thumbnail: $thumbnailInputStream")
+        return InputFile(name, parentPath, size, creationTime, lastModifiedTime, fileInputStream, thumbnailInputStream)
+    }
 
     fun addFile(uri: Uri){
         // Get a Uri. Make it in a format accessible for the FileSystem.
         // Ensure that the target exists in the file system, if not create it.
         // Add the file to the filesystem.
+        val file = getInputFileFromUri(uri)
+        Log.d("ADD_FILE", "Name: ${file.name} | ParentPath: ${file.parentPath} | Size: ${file.size}")
+        /*TODO DO STUFF
+        *  Call the filesystem method to add the file to the filesystem.
+        * */
+        file.close()
+//        val file = File(URI(uri.toString()))
+//        Log.d("ADD_FILE", "File: ${file.name}")
     }
+
 
     fun addDirectory(uri: Uri){
         // Get a Uri.
@@ -454,5 +560,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun exitVault() {
         reset()
+    }
+    init {
+        initVaults()
     }
 }

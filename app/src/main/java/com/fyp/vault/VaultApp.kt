@@ -7,8 +7,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -17,7 +17,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.fyp.vault.data.Node
 import com.fyp.vault.data.vaults
@@ -31,12 +30,11 @@ import com.fyp.vault.ui.StartScreen
 import com.fyp.vault.ui.VaultHomeScreen
 import com.fyp.vault.utilities.SystemStatusBarColorChanger
 
-enum class VaultScreen(){
+enum class Route(){
     Start,
     OpenVault,
     CreateVault,
-    Vault,
-    VaultHomeScreen
+    Vault
 }
 
 
@@ -56,25 +54,57 @@ fun VaultApp(
     * */
     /*TODO Add UIState*/
     val appState by appViewModel.appState.collectAsState()
+
     val mediaPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(),
         onResult = {uris ->
             appViewModel.setSelectedUris(uris)
+            appViewModel.handleFileSelection()
         }
     )
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
-        onResult = {uris -> appViewModel.setSelectedUris(uris)}
+        onResult = {uris ->
+            appViewModel.setSelectedUris(uris)
+            appViewModel.handleFileSelection()
+        }
+
     )
 
     val directoryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
-        onResult = {uri ->  if (uri != null) appViewModel.setSelectedUris(listOf(uri))}
+        onResult = {uri ->
+            if (uri != null){
+                appViewModel.setSelectedUris(listOf(uri))
+                appViewModel.handleDirectorySelection()
+            }
+        }
     )
 
-    var error = rememberSaveable(appViewModel.appState.value.error) {
+    val error = rememberSaveable(appViewModel.appState.value.error) {
         mutableStateOf(appViewModel.appState.value.error)
+    }
+
+    LaunchedEffect(appState.route) {
+        when (appState.route){
+            Route.Start.name -> {
+                navController.popBackStack(Route.Start.name, false)
+            }
+            Route.CreateVault.name -> {
+                navController.navigate(Route.CreateVault.name)
+            }
+            Route.OpenVault.name -> {
+                navController.navigate(Route.OpenVault.name)
+            }
+            Route.Vault.name -> {
+                navController.navigate(Route.Vault.name) {
+                    popUpTo(Route.Start.name) {
+                        inclusive = false
+                    }
+                }
+            }
+        }
     }
 
     /*TODO TEST TO GET ANDROID FILE PICKER*/
@@ -83,28 +113,25 @@ fun VaultApp(
 
     NavHost(
         navController = navController,
-        startDestination = VaultScreen.Start.name
+        startDestination = Route.Start.name
     ){
         composable(
-            route = VaultScreen.Start.name
+            route = Route.Start.name
         ){
-            appViewModel.clearVaultSelection()
             SystemStatusBarColorChanger(color = MaterialTheme.colorScheme.background)
             StartScreen(
-                vaults = vaults,
+                vaults = vaults, // Replace with appViewModel.vaults
                 onCreateVault = {
-                    navController.navigate(VaultScreen.CreateVault.name)
+                    appViewModel.navigateTo(Route.CreateVault.name)
                 },
                 onVaultClick = {
-                    while (!appViewModel.lock){appViewModel.setLock()}
+                    Log.d("[VAULT_APP: ON_VAULT_CLICK]", "VaultName: $it")
                     appViewModel.selectVault(it)
-                    while (appViewModel.lock){/* Wait */}
-                    navController.navigate(VaultScreen.OpenVault.name)
                 }
             )
         }
         composable(
-            route = VaultScreen.CreateVault.name
+            route = Route.CreateVault.name
         ){
             CreateVaultScreen(
                 error = error.value,
@@ -113,19 +140,7 @@ fun VaultApp(
                 },
                 onVaultCreate = { name:String, password:String ->
                     /*TODO Update During Backend Addition*/
-                    while (!appViewModel.lock){appViewModel.setLock()}
-                    Log.d("[VAULT_APP: CREATE_VAULT]", "Lock Value 1: ${appViewModel.lock} ")
                     appViewModel.createVault(name, password)
-                    while (appViewModel.lock){/* Wait */}
-                    Log.d("[VAULT_APP: CREATE_VAULT]", "Lock Value 1: ${appViewModel.lock} ")
-                    if (error.value == null) {
-                        Log.d("[VAULT_APP: CREATE_VAULT]", " Apparently No ERRORS ")
-                        navController.navigate(VaultScreen.Vault.name) {
-                            popUpTo(VaultScreen.CreateVault.name) {
-                                inclusive = true
-                            }
-                        }
-                    }
                 },
                 backHandler = {
                     returnToStart(appViewModel, navController)
@@ -133,7 +148,7 @@ fun VaultApp(
             )
         }
         composable(
-            route = VaultScreen.OpenVault.name
+            route = Route.OpenVault.name
         ){
             SystemStatusBarColorChanger(color = MaterialTheme.colorScheme.background)
             OpenVaultScreen(
@@ -143,16 +158,7 @@ fun VaultApp(
                 inputName = appState.vault,
                 onVaultOpen = { name: String, password: String ->
                 /*TODO FIX LATER*/
-                    while (!appViewModel.lock){appViewModel.setLock()}
                     appViewModel.openVault(name, password)
-                    while (appViewModel.lock){/* Wait */}
-                    if (error.value == null) {
-                        navController.navigate(VaultScreen.Vault.name) {
-                            popUpTo(VaultScreen.OpenVault.name) {
-                                inclusive = true
-                            }
-                        }
-                    }
                 },
                 error = error.value,
                 backHandler = {
@@ -160,136 +166,131 @@ fun VaultApp(
                 }
             )
         }
-        navigation(
-            route = VaultScreen.Vault.name,
-            startDestination = VaultScreen.VaultHomeScreen.name
+        composable(
+            route = Route.Vault.name
         ){
-            composable(
-                route = VaultScreen.VaultHomeScreen.name
-            ){
-                SystemStatusBarColorChanger(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha=0.1f))
-                VaultHomeScreen(
-                    vault = appState.vault,
-                    isListView = appState.isListView,
-                    appMode = appState.appMode,
-                    toggleSelectionMode = { value: Boolean ->
-                        appViewModel.toggleSelectionMode(value)
-                    },
-                    clearNodeSelection = {appViewModel.resetNodeSelection()},
-                    toggleIsListView = {appViewModel.toggleIsListView()},
-                    onAddNode = { option ->
-                        /*TODO Currently no implementation is in place for this method.*/
-                        when (option){
-                            AddNodeType.Directory.name -> {
-                                directoryPicker.launch(null)
-                            }
-                            AddNodeType.File.name -> {
-                                filePicker.launch(
-                                    arrayOf("*/*")
-                                )
-                            }
-                            AddNodeType.Media.name -> {
-                                mediaPicker.launch(PickVisualMediaRequest())
-                            }
+            SystemStatusBarColorChanger(color = MaterialTheme.colorScheme.primaryContainer.copy(alpha=0.1f))
+            VaultHomeScreen(
+                vault = appState.vault,
+                isListView = appState.isListView,
+                appMode = appState.appMode,
+                toggleSelectionMode = { value: Boolean ->
+                    appViewModel.toggleSelectionMode(value)
+                },
+                clearNodeSelection = {appViewModel.resetNodeSelection()},
+                toggleIsListView = {appViewModel.toggleIsListView()},
+                onAddNode = { option ->
+                    /*TODO Currently no implementation is in place for this method.*/
+                    when (option){
+                        AddNodeType.Directory.name -> {
+                            directoryPicker.launch(null)
                         }
-                    },
-                    onNavigationButtonClick = { pathStackIndex ->
-                        /*TODO the method gets the integer index of the clicked navigation item within the LinkedList. Delete all the elements after that.*/
-                        val elementsRemoved = appViewModel.navigateInPathStack(pathStackIndex)
-                        if (elementsRemoved != 0){
-                            for (i in 1..elementsRemoved){
-                                navController.popBackStack()
-                            }
+                        AddNodeType.File.name -> {
+                            filePicker.launch(
+                                arrayOf("*/*")
+                            )
                         }
-                    },
-                    onDirectoryClick = { node ->
-                        /*TODO this method gets the long index of the folder in the DirectoryStore*/
-                        appViewModel.openDirectory(node)
-                        navController.navigate(VaultScreen.VaultHomeScreen.name)
-                    },
-                    onFileClick = { node ->
-                        /*TODO this method gets the long index of the file within the DirectoryStore*/
-                        appViewModel.openFile(node)
-                    },
-                    pathStack = appViewModel.pathStack,
-                    optionClick = { selectedOption ->
-                        Log.d("[VAULT_APP: OPTION_CLICK]","Option: $selectedOption")
-                        when (selectedOption){
-                            Option.CreateDirectory.name,
-                            Option.Delete.name -> {
-                                appViewModel.setShowDialogOption(selectedOption)
-                                appViewModel.toggleShowDialog(true)
-                            }
-                            Option.Rename.name -> {
-                                if (appViewModel.selectedNodes.size == 1){
-                                    appViewModel.setShowDialogOption(selectedOption)
-                                    appViewModel.toggleShowDialog(true)
-                                }
-                            }
-                            Option.SelectAll.name,
-                            Option.DeSelectAll.name -> {
-                                appViewModel.optionHandler(null, selectedOption)
-                            }
-                            Option.Copy.name,
-                            Option.Move.name -> {
-                                appViewModel.setSelectedOption(selectedOption)
-                                appViewModel.setAppMode(AppMode.TargetPicker.name)
-                                /*TODO
-                                *  Set the selected option through the viewModel. Create a method there
-                                *  Change the app mode to TargetPicker Mode.
-                                *
-                                * OTHER
-                                * Fix cancel button
-                                * */
-                            }
-                            Option.Cancel.name -> {
-                                appViewModel.resetNodeSelection()
-                            }
-                            Option.SelectTarget.name -> {
-                                appViewModel.targetSelected()
-                            }
-                            Option.Export.name -> {
-
-                            }
+                        AddNodeType.Media.name -> {
+                            mediaPicker.launch(PickVisualMediaRequest())
                         }
-                    },
-                    selectedOption = appState.selectedOption,
-                    showDialog = appState.showDialog,
-                    showDialogOption = appState.showDialogOption,
-                    selectedNodes = appViewModel.selectedNodes,
-                    toggleNodeSelection = { node -> appViewModel.optionHandler(node, Option.Select.name)},
-                    closeDialog = {appViewModel.toggleShowDialog(false)},
-                    dialogSubmitHandler = { node: Node?, option:String, value: String ->
-                        when (option){
-                            Option.CreateDirectory.name -> {
-                                appViewModel.optionHandler(null, option, value)
-                            }
-                            Option.Rename.name -> {
-                                appViewModel.optionHandler(node, option, value)
-                            }
-                            Option.Delete.name -> {
-                                appViewModel.optionHandler(node, option)
-                            }
-                            Option.ExitVault.name -> {
-                                appViewModel.exitVault()
-                                returnToStart(appViewModel, navController)
-                            }
-                        }
-                    },
-                    onTargetSelectClick = {
-                        appViewModel.targetSelected()
-                    },
-                    backHandler = {
-                        val exitingVault:Boolean = appViewModel.backHandler()
-                        if (exitingVault){
-                            appViewModel.setShowDialogOption(Option.ExitVault.name)
-                            appViewModel.toggleShowDialog(true)
-                        } else {
+                    }
+                },
+                onNavigationButtonClick = { pathStackIndex ->
+                    /*TODO the method gets the integer index of the clicked navigation item within the LinkedList. Delete all the elements after that.*/
+                    val elementsRemoved = appViewModel.navigateInPathStack(pathStackIndex)
+                    if (elementsRemoved != 0){
+                        for (i in 1..elementsRemoved){
                             navController.popBackStack()
                         }
                     }
-                )
-            }
+                },
+                onDirectoryClick = { node ->
+                    /*TODO this method gets the long index of the folder in the DirectoryStore*/
+                    appViewModel.openDirectory(node)
+                    navController.navigate(Route.Vault.name)
+                },
+                onFileClick = { node ->
+                    /*TODO this method gets the long index of the file within the DirectoryStore*/
+                    appViewModel.openFile(node)
+                },
+                pathStack = appViewModel.pathStack,
+                optionClick = { selectedOption ->
+                    Log.d("[VAULT_APP: OPTION_CLICK]","Option: $selectedOption")
+                    when (selectedOption){
+                        Option.CreateDirectory.name,
+                        Option.Delete.name -> {
+                            appViewModel.setShowDialogOption(selectedOption)
+                            appViewModel.toggleShowDialog(true)
+                        }
+                        Option.Rename.name -> {
+                            if (appViewModel.selectedNodes.size == 1){
+                                appViewModel.setShowDialogOption(selectedOption)
+                                appViewModel.toggleShowDialog(true)
+                            }
+                        }
+                        Option.SelectAll.name,
+                        Option.DeSelectAll.name -> {
+                            appViewModel.optionHandler(null, selectedOption)
+                        }
+                        Option.Copy.name,
+                        Option.Move.name -> {
+                            appViewModel.setSelectedOption(selectedOption)
+                            appViewModel.setAppMode(AppMode.TargetPicker.name)
+                            /*TODO
+                            *  Set the selected option through the viewModel. Create a method there
+                            *  Change the app mode to TargetPicker Mode.
+                            *
+                            * OTHER
+                            * Fix cancel button
+                            * */
+                        }
+                        Option.Cancel.name -> {
+                            appViewModel.resetNodeSelection()
+                        }
+                        Option.SelectTarget.name -> {
+                            appViewModel.targetSelected()
+                        }
+                        Option.Export.name -> {
+
+                        }
+                    }
+                },
+                selectedOption = appState.selectedOption,
+                showDialog = appState.showDialog,
+                showDialogOption = appState.showDialogOption,
+                selectedNodes = appViewModel.selectedNodes,
+                toggleNodeSelection = { node -> appViewModel.optionHandler(node, Option.Select.name)},
+                closeDialog = {appViewModel.toggleShowDialog(false)},
+                dialogSubmitHandler = { node: Node?, option:String, value: String ->
+                    when (option){
+                        Option.CreateDirectory.name -> {
+                            appViewModel.optionHandler(null, option, value)
+                        }
+                        Option.Rename.name -> {
+                            appViewModel.optionHandler(node, option, value)
+                        }
+                        Option.Delete.name -> {
+                            appViewModel.optionHandler(node, option)
+                        }
+                        Option.ExitVault.name -> {
+                            appViewModel.exitVault()
+                            returnToStart(appViewModel, navController)
+                        }
+                    }
+                },
+                onTargetSelectClick = {
+                    appViewModel.targetSelected()
+                },
+                backHandler = {
+                    val exitingVault:Boolean = appViewModel.backHandler()
+                    if (exitingVault){
+                        appViewModel.setShowDialogOption(Option.ExitVault.name)
+                        appViewModel.toggleShowDialog(true)
+                    } else {
+                        navController.popBackStack()
+                    }
+                }
+            )
         }
     }
 }
@@ -299,7 +300,7 @@ private fun returnToStart(
     navController: NavController
 ){
     viewModel.reset()
-    navController.popBackStack(VaultScreen.Start.name, false)
+    navController.popBackStack(Route.Start.name, false)
 }
 
 //

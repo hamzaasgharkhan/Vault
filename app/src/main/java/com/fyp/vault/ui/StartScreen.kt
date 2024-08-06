@@ -1,8 +1,11 @@
 package com.fyp.vault.ui
 
+import android.graphics.Paint.Align
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.fyp.vault.R
@@ -52,23 +56,26 @@ fun StartScreen(
         },
         modifier = modifier
     ) {innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(dimensionResource(id = R.dimen.padding_medium))
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium)),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ){
-            if (vaults.isEmpty()){
+        if (vaults.isEmpty()){
+            Box(modifier = Modifier.fillMaxSize()){
                 Text(
                     text = stringResource(id = R.string.no_vaults),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .align(Alignment.Center),
+                    fontStyle = FontStyle.Italic,
                     textAlign = TextAlign.Center
                 )
-            } else {
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .padding(dimensionResource(id = R.dimen.padding_medium))
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium)),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ){
                 vaults.forEach{ title ->
                     VaultClickableCard(
                         title = title,

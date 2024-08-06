@@ -1,5 +1,6 @@
 package com.fyp.vault.ui
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +33,7 @@ fun OpenVaultScreen(
     modifier: Modifier = Modifier,
     backHandler: () -> Unit
 ){
-    var name by rememberSaveable { mutableStateOf(inputName) }
+    Log.d("[OPEN_VAULT_SCREEN]", "Name: $inputName")
     var password by rememberSaveable { mutableStateOf("") }
     /*TODO Fix Event Handlers*/
     /*TODO Fix states*/
@@ -59,16 +60,16 @@ fun OpenVaultScreen(
             ){
                 CredentialsCard(
                     modifier = Modifier.align(Alignment.Center),
-                    name = name,
+                    name = inputName,
                     password = password,
-                    onNameChange = {name = it},
+                    onNameChange = {},
                     onPasswordChange = {password = it},
-                    onSubmit = {onVaultOpen(name, password)},
+                    onSubmit = {onVaultOpen(inputName, password)},
                     error = error,
                     isNameEditable = false
                 )
                 Button(
-                    onClick = {onVaultOpen(name, password)},
+                    onClick = {onVaultOpen(inputName, password)},
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer

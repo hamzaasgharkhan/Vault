@@ -1,7 +1,10 @@
 package com.fyp.vault.ui
 
+import com.fyp.vault.Route
+
 data class AppState(
     val vault: String = "",
+    val route: String = Route.Start.name,
     val isListView: Boolean = true,
     val showDialog: Boolean = false,
     val showDialogOption: String? = null,

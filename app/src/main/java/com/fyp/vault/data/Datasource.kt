@@ -11,7 +11,8 @@ val vaults: MutableList<String> = mutableListOf(
 
 open class Node(
     open var name: String,
-    open val index: Long
+    open val index: Long,
+    open val path: String = "sheep"
 )
 
 data class File(
