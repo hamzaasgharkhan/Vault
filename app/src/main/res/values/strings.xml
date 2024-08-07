@@ -34,4 +34,5 @@
     <string name="add_media_button">Add Media Files</string>
     <string name="add_file_button">Add File</string>
     <string name="add_directory_button">Add Directory</string>
+    <string name="root_directory_name">/</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.fyp.vault.ui.components
 
+import FileSystem.Node
+import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -10,14 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import com.fyp.vault.R
-import com.fyp.vault.data.Directory
-import com.fyp.vault.data.Node
 
 @Composable
 fun VaultContent(
-    directory: Directory,
+    directory: Node,
     isListView: Boolean,
     appMode: String,
+    getNodeSize: (Node) -> Long,
+    getThumbnail: (Node) -> Bitmap?,
     toggleSelectionMode: (Boolean) -> Unit,
     selectedNodes: MutableList<Node>,
     optionClick: (String) -> Unit,
@@ -27,6 +29,8 @@ fun VaultContent(
     modifier: Modifier = Modifier
 ) {
     val lazyGridState = rememberLazyGridState()
+    val directories = directory.childNodes.filter{node -> node.isDirectory}
+    val files = directory.childNodes.filter{node -> !node.isDirectory}
     LazyVerticalGrid(
         columns = GridCells.Fixed(
             count = if (isListView) 1 else 2
@@ -38,7 +42,7 @@ fun VaultContent(
         modifier = modifier
     ) {
         items(
-            items = directory.childrenDirectories,
+            items = directories,
             key = { node -> node.index }
         ) { node ->
             if (isListView) {
@@ -49,25 +53,28 @@ fun VaultContent(
                     toggleNodeSelection = toggleNodeSelection,
                     toggleSelectionMode = toggleSelectionMode,
                     isSelected = node in selectedNodes,
+                    thumbnail = null,   // since it is a directory
                     optionClick = optionClick,
                 )
             } else {
                 NodeCardGridView(
                     node = node,
                     appMode = appMode,
+                    size = getNodeSize(node),
                     toggleSelectionMode = toggleSelectionMode,
                     isSelected = node in selectedNodes,
                     toggleNodeSelection = toggleNodeSelection,
+                    thumbnail = null,   // since it is a directory
                     onNodeClick = {onDirectoryClick(node)},
                 )
             }
         }
-        if (!isListView && directory.childrenDirectories.size % 2 != 0){
+        if (!isListView && directories.size % 2 != 0){
             items(1){
             }
         }
         items(
-            items =directory.childrenFiles,
+            items = files,
             key = { node -> node.index }
         ) { node ->
             if (isListView) {
@@ -78,15 +85,18 @@ fun VaultContent(
                     isSelected = node in selectedNodes,
                     onNodeClick = {onFileClick(node)},
                     toggleNodeSelection = toggleNodeSelection,
+                    thumbnail = getThumbnail(node),
                     optionClick = optionClick,
                 )
             } else {
                 NodeCardGridView(
                     node = node,
                     appMode = appMode,
+                    size = getNodeSize(node),
                     toggleSelectionMode = toggleSelectionMode,
                     isSelected = node in selectedNodes,
                     toggleNodeSelection = toggleNodeSelection,
+                    thumbnail = getThumbnail(node),
                     onNodeClick = {onFileClick(node)},
                 )
             }

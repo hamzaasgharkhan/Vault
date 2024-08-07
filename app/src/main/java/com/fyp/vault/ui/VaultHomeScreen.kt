@@ -1,8 +1,9 @@
 package com.fyp.vault.ui
 
+import FileSystem.Node
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -13,20 +14,19 @@ import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.FolderCopy
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonElevation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import com.fyp.vault.R
-import com.fyp.vault.data.Directory
-import com.fyp.vault.data.Node
+import com.fyp.vault.ui.components.CircularProgressOverlay
 import com.fyp.vault.ui.components.Dialog
 import com.fyp.vault.ui.components.VaultContent
 import com.fyp.vault.ui.components.VaultTopBar
@@ -35,10 +35,12 @@ import com.fyp.vault.ui.components.VaultTopBar
 @Composable
 fun VaultHomeScreen(
     vault: String,
-    pathStack: MutableList<Directory>,
+    pathStack: MutableList<Node>,
     appMode: String,
     selectedOption: String?,
     isListView: Boolean,
+    getNodeSize: (Node) -> Long,
+    getThumbnail: (Node) -> Bitmap?,
     toggleSelectionMode: (Boolean) -> Unit,
     clearNodeSelection: () -> Unit,
     toggleIsListView: () -> Unit,
@@ -57,8 +59,8 @@ fun VaultHomeScreen(
     optionClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ){
+    val loading by rememberSaveable{ mutableStateOf(false) }
     val expandFloatingButtons: MutableState<Boolean> = mutableStateOf(false)
-
     Scaffold(
         topBar = {
             VaultTopBar(
@@ -93,7 +95,10 @@ fun VaultHomeScreen(
                         if (expandFloatingButtons.value){
                             AddNodeType.entries.forEach{ type ->
                                 FloatingActionButton(
-                                    onClick = {onAddNode(type.name)},
+                                    onClick = {
+                                        onAddNode(type.name)
+                                        expandFloatingButtons.value = !expandFloatingButtons.value
+                                    },
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                                 ) {
                                     Icon(
@@ -147,10 +152,12 @@ fun VaultHomeScreen(
                 selectedNodes = selectedNodes,
                 directory = pathStack.last(),
                 isListView = isListView,
+                getThumbnail = getThumbnail,
                 modifier = Modifier.padding(innerPadding),
                 onDirectoryClick = onDirectoryClick,
                 onFileClick = onFileClick,
                 optionClick = optionClick,
+                getNodeSize = getNodeSize,
                 toggleNodeSelection = toggleNodeSelection
             )
         }
@@ -165,11 +172,16 @@ fun VaultHomeScreen(
             }
         }
     }
+    if (loading){
+        CircularProgressOverlay()
+    }
     BackHandler{
-        when (appMode){
-            AppMode.Normal.name -> { backHandler() }
-            AppMode.Selection.name -> { clearNodeSelection() }
-            AppMode.TargetPicker.name -> { backHandler() }
+        if (!loading){
+            when (appMode){
+                AppMode.Normal.name -> { backHandler() }
+                AppMode.Selection.name -> { clearNodeSelection() }
+                AppMode.TargetPicker.name -> { backHandler() }
+            }
         }
     }
 }

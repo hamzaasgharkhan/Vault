@@ -1,5 +1,6 @@
 package com.fyp.vault
 
+import FileSystem.Node
 import android.annotation.SuppressLint
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -8,18 +9,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.LiveData
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.fyp.vault.data.Node
-import com.fyp.vault.data.vaults
 import com.fyp.vault.ui.AddNodeType
 import com.fyp.vault.ui.AppMode
 import com.fyp.vault.ui.AppViewModel
@@ -28,6 +31,7 @@ import com.fyp.vault.ui.OpenVaultScreen
 import com.fyp.vault.ui.Option
 import com.fyp.vault.ui.StartScreen
 import com.fyp.vault.ui.VaultHomeScreen
+import com.fyp.vault.ui.components.IndefiniteCircularProgressIndicator
 import com.fyp.vault.utilities.SystemStatusBarColorChanger
 
 enum class Route(){
@@ -110,7 +114,6 @@ fun VaultApp(
     /*TODO TEST TO GET ANDROID FILE PICKER*/
 
     /*TODO TEST END*/
-
     NavHost(
         navController = navController,
         startDestination = Route.Start.name
@@ -120,7 +123,7 @@ fun VaultApp(
         ){
             SystemStatusBarColorChanger(color = MaterialTheme.colorScheme.background)
             StartScreen(
-                vaults = vaults, // Replace with appViewModel.vaults
+                vaults = appViewModel.vaults, // Replace with appViewModel.vaults
                 onCreateVault = {
                     appViewModel.navigateTo(Route.CreateVault.name)
                 },
@@ -204,12 +207,12 @@ fun VaultApp(
                         }
                     }
                 },
-                onDirectoryClick = { node ->
+                onDirectoryClick = { node: Node ->
                     /*TODO this method gets the long index of the folder in the DirectoryStore*/
                     appViewModel.openDirectory(node)
                     navController.navigate(Route.Vault.name)
                 },
-                onFileClick = { node ->
+                onFileClick = { node: Node ->
                     /*TODO this method gets the long index of the file within the DirectoryStore*/
                     appViewModel.openFile(node)
                 },
@@ -255,12 +258,14 @@ fun VaultApp(
                         }
                     }
                 },
+                getNodeSize = {node -> appViewModel.getSize(node)},
                 selectedOption = appState.selectedOption,
                 showDialog = appState.showDialog,
                 showDialogOption = appState.showDialogOption,
                 selectedNodes = appViewModel.selectedNodes,
-                toggleNodeSelection = { node -> appViewModel.optionHandler(node, Option.Select.name)},
+                toggleNodeSelection = { node: Node -> appViewModel.optionHandler(node, Option.Select.name)},
                 closeDialog = {appViewModel.toggleShowDialog(false)},
+                getThumbnail = {node -> appViewModel.getThumbnail(node)},
                 dialogSubmitHandler = { node: Node?, option:String, value: String ->
                     when (option){
                         Option.CreateDirectory.name -> {
@@ -302,6 +307,8 @@ private fun returnToStart(
     viewModel.reset()
     navController.popBackStack(Route.Start.name, false)
 }
+
+
 
 //
 //@Preview

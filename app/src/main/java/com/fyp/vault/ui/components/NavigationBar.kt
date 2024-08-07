@@ -1,5 +1,6 @@
 package com.fyp.vault.ui.components
 
+import FileSystem.Node
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -15,17 +16,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.fyp.vault.R
-import com.fyp.vault.data.Directory
-import com.fyp.vault.data.root
 import com.fyp.vault.ui.theme.VaultTheme
 import java.util.LinkedList
 
 @Composable
 fun NavigationBar(
-    pathStack: MutableList<Directory>,
+    pathStack: MutableList<Node>,
     onNavigationButtonClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ){
@@ -59,7 +59,7 @@ fun NavigationBar(
 
 @Composable
 fun NavigationButton(
-    directory: Directory,
+    directory: Node,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     currentDirectory: Boolean = false
@@ -67,7 +67,7 @@ fun NavigationButton(
     TextButton(onClick = onClick) {
         if (currentDirectory){
             Text(
-                text = directory.name,
+                text = if (directory.name == "root") stringResource(id = R.string.root_directory_name) else directory.name,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = modifier,
@@ -75,7 +75,7 @@ fun NavigationButton(
             )
         } else {
             Text(
-                text = directory.name,
+                text = if (directory.name == "root") stringResource(id = R.string.root_directory_name) else directory.name,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary.copy(.8f),
                 modifier = modifier
@@ -96,30 +96,30 @@ fun NavigationSeparator(
         modifier = modifier
     )
 }
-
-
-@Preview(
-    showBackground = true,
-    name = "NavigationBarPreview LightMode",
-    uiMode = Configuration.UI_MODE_NIGHT_NO
-)
-@Preview(
-    showBackground = true,
-    name = "NavigationBarPreview DarkMode",
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
-@Composable
-fun NavigationBarPreview(){
-    val pathStack = LinkedList<Directory>()
-    pathStack.add(root)
-    pathStack.add(root.childrenDirectories.first())
-    VaultTheme {
-        NavigationBar(
-            pathStack = pathStack,
-            onNavigationButtonClick = {},
-            modifier = Modifier
-                .padding(dimensionResource(id = R.dimen.padding_medium))
-                .fillMaxWidth()
-        )
-    }
-}
+//
+//
+//@Preview(
+//    showBackground = true,
+//    name = "NavigationBarPreview LightMode",
+//    uiMode = Configuration.UI_MODE_NIGHT_NO
+//)
+//@Preview(
+//    showBackground = true,
+//    name = "NavigationBarPreview DarkMode",
+//    uiMode = Configuration.UI_MODE_NIGHT_YES
+//)
+//@Composable
+//fun NavigationBarPreview(){
+//    val pathStack = LinkedList<Directory>()
+//    pathStack.add(root)
+//    pathStack.add(root.childrenDirectories.first())
+//    VaultTheme {
+//        NavigationBar(
+//            pathStack = pathStack,
+//            onNavigationButtonClick = {},
+//            modifier = Modifier
+//                .padding(dimensionResource(id = R.dimen.padding_medium))
+//                .fillMaxWidth()
+//        )
+//    }
+//}

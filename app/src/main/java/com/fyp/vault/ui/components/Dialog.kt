@@ -1,5 +1,6 @@
 package com.fyp.vault.ui.components
 
+import FileSystem.Node
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardActions
@@ -21,7 +22,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.fyp.vault.R
-import com.fyp.vault.data.Node
 import com.fyp.vault.ui.Option
 import com.fyp.vault.ui.theme.VaultTheme
 import java.util.LinkedList
@@ -211,25 +211,25 @@ fun SingleInputDialogPreview(){
     }
 }
 
-@Preview
-@Composable
-fun ConfirmDialogPreview(){
-    val nodes = LinkedList<Node>()
-    nodes.add(Node("Test Node", 1))
-    nodes.add(Node("Test Node", 1))
-    nodes.add(Node("Test Node", 1))
-    nodes.add(Node("Test Node", 1))
-    nodes.add(Node("Test Node", 1))
-    nodes.add(Node("Test Node", 1))
-
-    VaultTheme {
-        ConfirmDialog(
-            title = R.string.delete_title,
-            text = R.string.delete_text,
-            selectedOption = Option.CreateDirectory.name,
-            onSubmit = { _, _, _ -> },
-            closeDialog = { /*TODO*/ },
-            selectedNodes = nodes
-        )
-    }
-}
+//@Preview
+//@Composable
+//fun ConfirmDialogPreview(){
+//    val nodes = LinkedList<Node>()
+//    nodes.add(Node("Test Node", 1))
+//    nodes.add(Node("Test Node", 1))
+//    nodes.add(Node("Test Node", 1))
+//    nodes.add(Node("Test Node", 1))
+//    nodes.add(Node("Test Node", 1))
+//    nodes.add(Node("Test Node", 1))
+//
+//    VaultTheme {
+//        ConfirmDialog(
+//            title = R.string.delete_title,
+//            text = R.string.delete_text,
+//            selectedOption = Option.CreateDirectory.name,
+//            onSubmit = { _, _, _ -> },
+//            closeDialog = { /*TODO*/ },
+//            selectedNodes = nodes
+//        )
+//    }
+//}

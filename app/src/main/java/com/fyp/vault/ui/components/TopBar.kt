@@ -1,5 +1,6 @@
 package com.fyp.vault.ui.components
 
+import FileSystem.Node
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -39,8 +41,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fyp.vault.R
-import com.fyp.vault.data.Directory
-import com.fyp.vault.data.root
 import com.fyp.vault.ui.AppMode
 import com.fyp.vault.ui.Option
 import com.fyp.vault.ui.OptionCategory
@@ -80,7 +80,7 @@ fun VaultTopBar(
     appMode: String,
     numberOfSelectedNodes: Int,
     navigationAction: () -> Unit,
-    pathStack: MutableList<Directory>,
+    pathStack: MutableList<Node>,
     toggleIsListView: () -> Unit,
     onNavigationButtonClick: (Int) -> Unit,
     optionClick: (String) -> Unit,
@@ -88,12 +88,12 @@ fun VaultTopBar(
     selectedOption: String?,
     isListView: Boolean = false
 ){
-    val topAppBarState = rememberTopAppBarState()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     when (appMode){
         AppMode.Normal.name -> {
             VaultTopBarNormalMode(
                 title = title,
-                topAppBarState = topAppBarState,
+                scrollBehavior = scrollBehavior,
                 navigationAction = navigationAction,
                 pathStack = pathStack,
                 toggleIsListView = toggleIsListView,
@@ -106,7 +106,7 @@ fun VaultTopBar(
         AppMode.Selection.name -> {
             VaultTopBarSelectionMode(
                 numberOfSelectedNodes = numberOfSelectedNodes,
-                topAppBarState = topAppBarState,
+                scrollBehavior = scrollBehavior,
                 navigationAction = navigationAction,
                 pathStack = pathStack,
                 optionClick = optionClick,
@@ -118,7 +118,7 @@ fun VaultTopBar(
                 VaultTopBarTargetPickerMode(
                     selectedOption = selectedOption,
                     numberOfSelectedNodes = numberOfSelectedNodes,
-                    topAppBarState = topAppBarState,
+                    scrollBehavior = scrollBehavior,
                     navigationAction = navigationAction,
                     pathStack = pathStack,
                     onNavigationButtonClick = onNavigationButtonClick,
@@ -133,9 +133,9 @@ fun VaultTopBar(
 @Composable
 fun VaultTopBarNormalMode(
     title: String,
-    topAppBarState: TopAppBarState,
+    scrollBehavior: TopAppBarScrollBehavior,
     navigationAction: () -> Unit,
-    pathStack: MutableList<Directory>,
+    pathStack: MutableList<Node>,
     toggleIsListView: () -> Unit,
     onNavigationButtonClick: (Int) -> Unit,
     optionClick: (String) -> Unit,
@@ -171,7 +171,7 @@ fun VaultTopBarNormalMode(
                         )
                     }
                 },
-                scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState),
+                scrollBehavior = scrollBehavior,
                 actions = {
                     if (isListView){
                         // Add Button to Toggle to Grid View
@@ -234,15 +234,15 @@ fun VaultTopBarNormalMode(
 @Composable
 fun VaultTopBarSelectionMode(
     numberOfSelectedNodes: Int,
-    topAppBarState: TopAppBarState,
+    scrollBehavior: TopAppBarScrollBehavior,
     navigationAction: () -> Unit,
-    pathStack: MutableList<Directory>,
+    pathStack: MutableList<Node>,
     optionClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ){
     var showAllOptionsTopBar by rememberSaveable { mutableStateOf(false) }
     val allNodesAreSelected = if (pathStack.isNotEmpty()){
-        (pathStack.last().childrenDirectories.size + pathStack.last().childrenFiles.size) == numberOfSelectedNodes
+        pathStack.last().childNodes.size == numberOfSelectedNodes
     } else false
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
@@ -268,7 +268,7 @@ fun VaultTopBarSelectionMode(
                         Icon(imageVector = Icons.Outlined.Close, contentDescription = "Clear Selection")
                     }
                 },
-                scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState),
+                scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton( onClick = {optionClick(Option.Delete.name)} ){
                         Icon(
@@ -348,10 +348,10 @@ fun VaultTopBarSelectionMode(
 fun VaultTopBarTargetPickerMode(
     selectedOption: String,
     numberOfSelectedNodes: Int,
-    topAppBarState: TopAppBarState,
+    scrollBehavior: TopAppBarScrollBehavior,
     navigationAction: () -> Unit,
     onNavigationButtonClick: (Int) -> Unit,
-    pathStack: MutableList<Directory>,
+    pathStack: MutableList<Node>,
     optionClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ){
@@ -388,7 +388,7 @@ fun VaultTopBarTargetPickerMode(
                         Icon(imageVector = Icons.Outlined.Close, contentDescription = "Cancel Operation")
                     }
                 },
-                scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState),
+                scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton( onClick = {showAllOptionsTopBar = true}){
                         Icon(
@@ -451,38 +451,38 @@ fun VaultTopBarTargetPickerMode(
 
 
 
-
-@Preview(
-    showBackground = true,
-    name = "TopBarPreview"
-)
-
-@Composable
-fun AppBarPreview(){
-    VaultTheme {
-        TopBar("Vault", true)
-    }
-}
-
-@Preview(
-    showBackground = true,
-    name = "TopBarPreview LightMode",
-    uiMode = Configuration.UI_MODE_NIGHT_NO
-)
-@Preview(
-    showBackground = true,
-    name = "TopBarPreview DarkMode",
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
-@Composable
-fun VaultTopBarPreview(){
-    val pathStack = LinkedList<Directory>()
-    pathStack.add(root)
-    pathStack.add(root.childrenDirectories.first())
-    VaultTheme {
-        VaultTopBar(title = "Vault", numberOfSelectedNodes = 0, navigationAction = {}, pathStack = pathStack, isListView = true, toggleIsListView = {}, onNavigationButtonClick = {}, optionClick = {}, appMode = AppMode.Normal.name, selectedOption = null)
-    }
-}
+//
+//@Preview(
+//    showBackground = true,
+//    name = "TopBarPreview"
+//)
+//
+//@Composable
+//fun AppBarPreview(){
+//    VaultTheme {
+//        TopBar("Vault", true)
+//    }
+//}
+//
+//@Preview(
+//    showBackground = true,
+//    name = "TopBarPreview LightMode",
+//    uiMode = Configuration.UI_MODE_NIGHT_NO
+//)
+//@Preview(
+//    showBackground = true,
+//    name = "TopBarPreview DarkMode",
+//    uiMode = Configuration.UI_MODE_NIGHT_YES
+//)
+//@Composable
+//fun VaultTopBarPreview(){
+//    val pathStack = LinkedList<Directory>()
+//    pathStack.add(root)
+//    pathStack.add(root.childrenDirectories.first())
+//    VaultTheme {
+//        VaultTopBar(title = "Vault", numberOfSelectedNodes = 0, navigationAction = {}, pathStack = pathStack, isListView = true, toggleIsListView = {}, onNavigationButtonClick = {}, optionClick = {}, appMode = AppMode.Normal.name, selectedOption = null)
+//    }
+//}
 
 
 fun adjustBrightness(color: Color, factor: Float): Color {

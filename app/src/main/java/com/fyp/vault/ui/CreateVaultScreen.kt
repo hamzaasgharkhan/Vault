@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import com.fyp.vault.R
+import com.fyp.vault.ui.components.CircularProgressOverlay
 import com.fyp.vault.ui.components.CredentialsCard
 import com.fyp.vault.ui.components.TopBar
 
@@ -31,6 +32,7 @@ fun CreateVaultScreen(
     modifier: Modifier = Modifier,
     backHandler: () -> Unit
 ){
+    var loading by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     /*TODO Fix Event Handlers*/
@@ -61,12 +63,20 @@ fun CreateVaultScreen(
                     password = password,
                     onNameChange = {name = it},
                     onPasswordChange = {password = it},
-                    onSubmit = {onVaultCreate(name, password)},
+                    onSubmit = {
+                        loading = true
+                        onVaultCreate(name, password)
+                        loading = false
+                    },
                     error = error,
                     modifier = Modifier.align(Alignment.Center)
                 )
                 Button(
-                    onClick = { onVaultCreate(name, password) },
+                    onClick = {
+                        loading = true
+                        onVaultCreate(name, password)
+                        loading = false
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -82,7 +92,12 @@ fun CreateVaultScreen(
             }
         }
     }
+    if (loading){
+        CircularProgressOverlay()
+    }
     BackHandler {
-        backHandler()
+        if (!loading){
+            backHandler()
+        }
     }
 }

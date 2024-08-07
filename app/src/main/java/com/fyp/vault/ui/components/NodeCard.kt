@@ -1,6 +1,7 @@
 package com.fyp.vault.ui.components
 
-import android.util.Log
+import FileSystem.Node
+import android.graphics.Bitmap
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,18 +42,15 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fyp.vault.R
-import com.fyp.vault.data.Directory
-import com.fyp.vault.data.File
-import com.fyp.vault.data.Node
 import com.fyp.vault.ui.AppMode
 import com.fyp.vault.ui.Option
 import com.fyp.vault.ui.OptionCategory
@@ -63,6 +61,7 @@ import com.fyp.vault.utilities.calculateSizeInStringFormat
 fun NodeCardListView(
     node: Node,
     appMode: String,
+    thumbnail: Bitmap?,
     onNodeClick: () -> Unit,
     optionClick: (String) -> Unit,
     toggleNodeSelection: (Node) -> Unit,
@@ -114,10 +113,10 @@ fun NodeCardListView(
                     .fillMaxWidth(0.85f)
                     .align(Alignment.CenterStart)
             ){
-                if (node is File && node.thumbnail != null){
-                    // Thumbnail exists
+                if (!node.isDirectory && thumbnail != null){
+                    // File with thumbnail
                     Image(
-                        painter = painterResource(node.thumbnail),
+                        bitmap = thumbnail.asImageBitmap(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -125,6 +124,7 @@ fun NodeCardListView(
                             .clip(MaterialTheme.shapes.medium)
                     )
                 } else {
+                    // Either a directory or a file without thumbnail
                     Box(
                         modifier = Modifier
                             .size(dimensionResource(id = R.dimen.list_thumbnail_size))
@@ -134,7 +134,7 @@ fun NodeCardListView(
                             )
                     ){
                         Icon(
-                            imageVector = if (node is Directory) Icons.Filled.FolderOpen else Icons.AutoMirrored.Outlined.InsertDriveFile,
+                            imageVector = if (node.isDirectory) Icons.Filled.FolderOpen else Icons.AutoMirrored.Outlined.InsertDriveFile,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier
@@ -212,6 +212,8 @@ fun NodeCardListView(
 @Composable
 fun NodeCardGridView(
     node: Node,
+    size: Long,
+    thumbnail: Bitmap?,
     onNodeClick: () -> Unit,
     appMode: String,
     toggleNodeSelection: (Node) -> Unit,
@@ -219,13 +221,16 @@ fun NodeCardGridView(
     isSelected: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val isDirectory = rememberSaveable() {
+        node.isDirectory
+    }
     val haptics = LocalHapticFeedback.current
-    val sizeInString: String? = if (node is File) calculateSizeInStringFormat(node.size) else null
+    val sizeInString: String? = if (!isDirectory) calculateSizeInStringFormat(size) else null
     Box(
-        modifier = if (node is File && isSelected) {
+        modifier = if (!isDirectory && isSelected) {
             modifier
                 .background(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha=0.3F),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3F),
                 )
                 .padding(16.dp)
         } else modifier
@@ -264,9 +269,10 @@ fun NodeCardGridView(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(if (node is Directory) dimensionResource(id = R.dimen.padding_small) else 0.dp)
+                    .padding(if (isDirectory) dimensionResource(id = R.dimen.padding_small) else 0.dp)
             ) {
-                if (node is Directory){
+                if (isDirectory){
+                    // Directory
                     if (appMode == AppMode.Selection.name){
                         Icon(
                             imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
@@ -287,7 +293,8 @@ fun NodeCardGridView(
                         )
                     }
                     Text(text = node.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                } else if (node is File) {
+                } else {
+                    // File
                     Box(
                         modifier = Modifier
                             .background(
@@ -299,10 +306,10 @@ fun NodeCardGridView(
                                 .fillMaxWidth()
                                 .aspectRatio(1f)
                         ){
-                            if (node.thumbnail != null) {
+                            if (thumbnail != null) {
                                 // Thumbnail exists
                                 Image(
-                                    painter = painterResource(node.thumbnail),
+                                    bitmap = thumbnail.asImageBitmap(),
                                     contentDescription = node.name,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
@@ -349,11 +356,13 @@ fun NodeCardGridView(
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(dimensionResource(id = R.dimen.padding_medium))
-                                    .background(color = if (isSelected) MaterialTheme.colorScheme.background else Color.Transparent,
-                                        shape = CircleShape)
+                                    .background(
+                                        color = if (isSelected) MaterialTheme.colorScheme.background else Color.Transparent,
+                                        shape = CircleShape
+                                    )
                             )
                         }
-                        if (node.thumbnail == null){
+                        if (thumbnail == null){
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)

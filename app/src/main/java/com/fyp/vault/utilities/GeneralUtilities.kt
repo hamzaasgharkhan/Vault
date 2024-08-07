@@ -2,6 +2,8 @@ package com.fyp.vault.utilities
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.fyp.vault.data.ThumbnailProvider
+import com.fyp.vault.data.fileExtensionToMIME
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -30,7 +32,7 @@ fun getInputStreamFromBitmap(bitmap: Bitmap): InputStream {
     return ByteArrayInputStream(outputStream.toByteArray())
 }
 
-fun createThumbnailAsStream(inputStream: InputStream, maxDimension: Int): InputStream {
+fun createThumbnailAsStream(inputStream: InputStream, maxDimension: Int): ThumbnailProvider {
     // Decode the image from the InputStream
     val originalBitmap = BitmapFactory.decodeStream(inputStream)
         ?: throw IOException("Could not decode image from input stream.")
@@ -63,13 +65,14 @@ fun createThumbnailAsStream(inputStream: InputStream, maxDimension: Int): InputS
     val baos = ByteArrayOutputStream()
     thumbnail.compress(Bitmap.CompressFormat.PNG, 100, baos) // Use JPEG or PNG depending on your needs
     baos.flush()
+    val byteArray = baos.toByteArray()
     // Convert ByteArrayOutputStream to ByteArrayInputStream
     val bais = ByteArrayInputStream(baos.toByteArray())
     baos.close() // Close the ByteArrayOutputStream
-    return bais
+    return ThumbnailProvider(bais, byteArray.size.toLong())
 }
 
-fun createThumbnailAsStream(bitmap: Bitmap, maxDimension: Int): InputStream{
+fun createThumbnailAsStream(bitmap: Bitmap, maxDimension: Int): ThumbnailProvider{
     val originalWidth = bitmap.width
     val originalHeight = bitmap.height
 
@@ -92,13 +95,21 @@ fun createThumbnailAsStream(bitmap: Bitmap, maxDimension: Int): InputStream{
 
     // Create a scaled bitmap
     val thumbnail = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-
     // Write the thumbnail to a ByteArrayOutputStream
     val baos = ByteArrayOutputStream()
     thumbnail.compress(Bitmap.CompressFormat.PNG, 100, baos) // Use JPEG or PNG depending on your needs
     baos.flush()
     // Convert ByteArrayOutputStream to ByteArrayInputStream
-    val bais = ByteArrayInputStream(baos.toByteArray())
-    baos.close() // Close the ByteArrayOutputStream
-    return bais
+    val byteArray = baos.toByteArray()
+    val bais = ByteArrayInputStream(byteArray)
+    baos.close()
+    return ThumbnailProvider(bais, byteArray.size.toLong())// Close the ByteArrayOutputStream
+}
+
+fun getBitmapFromStream(stream: InputStream): Bitmap{
+    return BitmapFactory.decodeStream(stream);
+}
+
+fun MIMEFromExtension(extension: String): String?{
+        return fileExtensionToMIME[extension]
 }
