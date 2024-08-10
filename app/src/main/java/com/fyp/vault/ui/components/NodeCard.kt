@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,8 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -55,6 +58,7 @@ import com.fyp.vault.ui.AppMode
 import com.fyp.vault.ui.Option
 import com.fyp.vault.ui.OptionCategory
 import com.fyp.vault.utilities.calculateSizeInStringFormat
+import com.fyp.vault.utilities.isNodeVideo
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -115,14 +119,27 @@ fun NodeCardListView(
             ){
                 if (!node.isDirectory && thumbnail != null){
                     // File with thumbnail
-                    Image(
-                        bitmap = thumbnail.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(dimensionResource(id = R.dimen.list_thumbnail_size))
-                            .clip(MaterialTheme.shapes.medium)
-                    )
+                    Box(modifier = Modifier.size(dimensionResource(id = R.dimen.list_thumbnail_size))){
+                        Image(
+                            bitmap = thumbnail.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(dimensionResource(id = R.dimen.list_thumbnail_size))
+                                .clip(MaterialTheme.shapes.medium)
+                        )
+                        if (isNodeVideo(node)){
+                            Icon(
+                                imageVector = Icons.Filled.PlayCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .scale(0.5f)
+                            )
+                        }
+                    }
                 } else {
                     // Either a directory or a file without thumbnail
                     Box(
@@ -338,14 +355,27 @@ fun NodeCardGridView(
                                         end = dimensionResource(id = R.dimen.padding_small)
                                     )
                             ) {
-                                Text(
-                                    text = sizeInString!!,
-                                    style = MaterialTheme.typography.titleSmall.copy(shadow = Shadow(
-                                        color = Color.Black, offset = Offset(0f, 0f), blurRadius = 2f
-                                    )),
-                                    color = Color.White,
-                                    modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_small))
-                                )
+                                Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically){
+                                    Text(
+                                        text = sizeInString!!,
+                                        style = MaterialTheme.typography.titleSmall.copy(shadow = Shadow(
+                                            color = Color.Black, offset = Offset(0f, 0f), blurRadius = 2f
+                                        )),
+                                        color = Color.White,
+                                        modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_small))
+                                    )
+                                    if (isNodeVideo(node)){
+                                        Icon(
+                                            imageVector = Icons.Filled.PlayCircle,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onBackground,
+                                            modifier = Modifier
+                                                .padding(
+                                                    end = dimensionResource(id = R.dimen.padding_small)
+                                                )
+                                        )
+                                    }
+                                }
                             }
                         }
                         if (appMode == AppMode.Selection.name){
@@ -361,6 +391,19 @@ fun NodeCardGridView(
                                         shape = CircleShape
                                     )
                             )
+                            if (isSelected && isNodeVideo(node)){
+                                Icon(
+                                    imageVector = Icons.Filled.PlayCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(
+                                            top = dimensionResource(id = R.dimen.padding_medium),
+                                            end = dimensionResource(id = R.dimen.padding_small)
+                                        )
+                                )
+                            }
                         }
                         if (thumbnail == null){
                             Box(

@@ -9,9 +9,13 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Environment
+import android.os.Environment.DIRECTORY_DCIM
+import android.os.Environment.DIRECTORY_DOCUMENTS
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
@@ -20,6 +24,7 @@ import com.fyp.vault.data.ThumbnailProvider
 import com.fyp.vault.utilities.MIMEFromExtension
 import com.fyp.vault.utilities.createThumbnailAsStream
 import com.fyp.vault.utilities.getBitmapFromStream
+import com.fyp.vault.utilities.isNodeMedia
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,9 +74,16 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun handleFileSelection(){
-        for (uri in selectedUris){
-            addFile(uri)
+        try {
+            for (uri in selectedUris){
+                addFile(uri)
+            }
+            Toast.makeText(app.baseContext, "Operation Successful!", Toast.LENGTH_SHORT).show()
+        } catch (e:Exception){
+            e.message?.let { Log.e("HANDLE_FILE_SELECTION", it) }
+            e.printStackTrace()
         }
+
 //            uri.encodedPath
 //            Log.d("[INTERNAL_VIEW_MODEL: SET_SELECTED_URI]", "Uri Scheme: ${uri.scheme} Path: ${uri.path} isAbsolute: ${uri.isAbsolute}")
 //            val inputStream= app.contentResolver.openInputStream(uri)
@@ -83,11 +95,11 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 //              }
     }
 
-    fun handleDirectorySelection(){
-        for (uri in selectedUris){
-            addDirectory(uri)
-        }
-    }
+//    fun handleDirectorySelection(){
+//        for (uri in selectedUris){
+//            addDirectory(uri)
+//        }
+//    }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +140,52 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         setVaultName("")
     }
 
+    fun exportVault(){
+        // VAULT FILE IN APP INTERNAL STORAGE
+        val vaultFile = File(app.filesDir, appState.value.vault)
+        val vaultChildrenFiles = vaultFile.listFiles()
+        if (!vaultFile.exists() || vaultChildrenFiles == null || !File(vaultFile, "super-block").exists()){
+            Log.e("[INTERNAL_VIEW_MODEL: EXPORT_VAULT]", "Cannot Export Vault. Vault Does not Exists.")
+            return
+        }
+        // BASE FILE FOR STORAGE
+        val baseFile = Environment.getExternalStoragePublicDirectory(DIRECTORY_DOCUMENTS)
+        if (!baseFile.exists()){
+            baseFile.mkdir()
+        }
+        // VAULT APPLICATION BASE FILE
+        val appBaseFile = File(baseFile, "Vault")
+        if (!appBaseFile.exists()){
+            appBaseFile.mkdir()
+        }
+        // CURRENT VAULT FILE
+        val vaultTargetFile = File(appBaseFile, appState.value.vault)
+        if (vaultTargetFile.exists()){
+            vaultTargetFile.deleteRecursively()
+        }
+        vaultTargetFile.mkdir()
+        for (file in vaultChildrenFiles){
+            val newFile = File(vaultTargetFile, file.name)
+            newFile.createNewFile()
+            newFile.outputStream().use {outputStream ->
+                file.inputStream().use{ stream ->
+                    stream.copyTo(outputStream)
+
+                }
+            }
+        }
+        Toast.makeText(app.baseContext, "Operation Successful!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun deleteVault(){
+        val selectedVault = appState.value.vault
+        exitVault()
+        vaults.remove(appState.value.vault);
+        // DELETE THE ACTUAL VAULT FILES
+        val vaultFile = File(app.filesDir, selectedVault)
+        vaultFile.deleteRecursively()
+        initVaults()
+    }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +242,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 _openVault(name, password)
                 navigateTo(Route.Vault.name)
             } catch (e: RuntimeException){
+                setError(Error.OpenVault_InvalidPassword)
                 /*TODO Handle Exception*/
             }
         }
@@ -280,7 +339,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 creationTime = lastModifiedTime
             }
         }
-        var fileInputStream: InputStream? = app.contentResolver.openInputStream(uri)
+        val fileInputStream: InputStream? = app.contentResolver.openInputStream(uri)
         if (fileInputStream == null) {
             throw Exception("FileInputStream is null")
         }
@@ -312,6 +371,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         } catch (e: Exception){
             e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: ADD_FILE]", it) }
             e.printStackTrace()
+            throw Exception("Unable to Add File.")
             // HANDLE ERROR
         }
     }
@@ -321,11 +381,12 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     }
 
-    fun addDirectory(uri: Uri){
-        // Get a Uri.
-        // Create a directory for it in the filesystem if it doesn't exist.
-        // Recursively add all the folders and files within the Uri to the filesystem.
-    }
+//    fun addDirectory(uri: Uri){
+//        // Get a Uri.
+//        // Create a directory for it in the filesystem if it doesn't exist.
+//        // Recursively add all the folders and files within the Uri to the filesystem.
+//        Log.d("[INTERNAL_VIEW_MODEL: ADD_DIRECTORY]", uri.scheme)
+//    }
 
     fun createDirectory(name: String){
         if (fileSystem == null){
@@ -343,11 +404,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun openDirectory(node: Node){
+        clearCache()
         try {
             fileSystem!!.getNode(node)
             pathStack.add(node)
         } catch (e: Exception){
             // HANDLE ERROR
+            e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: CREATE_DIRECTORY]", it) }
+            e.printStackTrace()
         }
     }
 
@@ -364,16 +428,30 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun copyNode(node: Node, targetDestination: Node){
-        Log.d("[INTERNAL_VIEW_MODEL: COPY_NODE]", "Node: ${node.name} | TargetDestination: ${targetDestination.name}")
+    fun copyNode(node: Node, targetNode: Node){
+        Log.d("[INTERNAL_VIEW_MODEL: COPY_NODE]", "Node: ${node.name} | TargetDestination: ${targetNode.name}")
+        try {
+            fileSystem!!.copyNode(node, targetNode)
+        } catch (e: Exception){
+            e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: MOVE_NODE]", it) }
+            e.printStackTrace()
+            throw Exception("[INTERNAL_VIEW_MODEL: COPY_NODE] Operation Failed!")
+        }
     }
 
-    fun moveNode(node: Node, targetDestination: Node){
-        Log.d("[INTERNAL_VIEW_MODEL: MOVE_NODE]", "Node: ${node.name} | TargetDestination: ${targetDestination.name}")
+    fun moveNode(node: Node, targetNode: Node){
+        Log.d("[INTERNAL_VIEW_MODEL: MOVE_NODE]", "Node: ${node.name} | TargetDestination: ${targetNode.name}")
+        try {
+            fileSystem!!.moveNode(node, targetNode)
+        } catch (e: Exception){
+            e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: MOVE_NODE]", it) }
+            e.printStackTrace()
+            throw Exception("[INTERNAL_VIEW_MODEL: MOVE_NODE] Operation Failed!")
+        }
     }
 
     fun openFile(node: Node){
-
+        clearCache()        // THIS IS IMPORTANT TO ENSURE THAT TEMP FILES ARE DELETED.
         /*TODO Future Implementations will have openers for images and videos.
         *  For now, just create temporary files and open them that way.*/
         if (node.isDirectory){
@@ -385,9 +463,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         Log.d("[INTERNAL_VIEW_MODEL: OPEN_FILE]", "Name: $name, Extension: $extension")
         try {
             val tempFile = File.createTempFile("temp-$name", extension, app.cacheDir)
+            tempFile.deleteOnExit()
             Log.d("[INTERNAL_VIEW_MODEL: OPEN_FILE]", "tempFile: $tempFile")
             FileOutputStream(tempFile).use {outputStream ->
-                fileSystem!!.openFile(node).copyTo(outputStream)
+                fileSystem!!.openFile(node).use{ stream ->
+                    stream.copyTo(outputStream)
+
+                }
                 Log.d("[INTERNAL_VIEW_MODEL: OPEN_FILE]", "File Written")
             }
             Log.d("[INTERNAL_VIEW_MODEL: OPEN_FILE]", "File exists: ${tempFile.exists()}")
@@ -405,7 +487,6 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             if (intent.resolveActivity(app.baseContext.packageManager) != null){
                 app.baseContext.startActivity(intent)
             }
-            tempFile.deleteOnExit()
         } catch (e: Exception){
             e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: OPEN_FILE]", it) }
         }
@@ -454,16 +535,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             return true
         }
         else{
+            clearCache()
             pathStack.removeLast()
             return false
-        }
-    }
-
-    fun topBarOptionHandler(option: String, value: String){
-        if (option == Option.CreateDirectory.name){
-            Log.d("[INTERNAL_VIEW_MODEL: TOP_BAR_OPTION_HANDLER]", "Option Called: CreateDirectory")
-            /*TODO REPLACE THIS WITH THE ACTUAL FILE SYSTEM CALL*/
-            createDirectory(value);
         }
     }
 
@@ -505,14 +579,69 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun renameNode(node: Node, name: String){
         Log.d("[INTERNAL_VIEW_MODEL: RENAME_NODE]", name)
-        // IT DOES REACH THIS POINT
-        // RENAME DOESN'T HAPPEN FOR SOME REASON
-//        node.name = name
+        try {
+            fileSystem!!.renameNode(node, name)
+        } catch (e: Exception){
+            e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: RENAME_NODE]", it) }
+            e.printStackTrace()
+            throw Exception("[INTERNAL_VIEW_MODEL: RENAME_NODE] Operation Failed!")
+        }
+    }
+
+    private fun exportNode(node: Node) {
+        // BaseFile For Exports (DCIM Folder)
+        Log.d("[INTERNAL_VIEW_MODEL: EXPORT_NODE]", "Name: ${node.name}")
+        var baseFile = Environment.getExternalStoragePublicDirectory(DIRECTORY_DOCUMENTS)
+        if (isNodeMedia(node)){
+            baseFile = Environment.getExternalStoragePublicDirectory(DIRECTORY_DCIM)
+        }
+        if (!baseFile.exists()){
+            baseFile.mkdir()
+        }
+        val appBaseFile = File(baseFile, "Vault Exports")
+        if (!appBaseFile.exists()){
+            appBaseFile.mkdir()
+        }
+        val vaultBaseFile = File(appBaseFile, appState.value.vault)
+        if (!vaultBaseFile.exists()){
+            vaultBaseFile.mkdir()
+        }
+        try {
+            if (node.isDirectory){
+                val nodeChildren = fileSystem!!.openDirectory(node)
+                for (childNode in nodeChildren){
+                    exportNode(childNode)
+                }
+            } else {
+                Log.d("[INTERNAL_VIEW_MODEL: EXPORT_NODE]", "HERE")
+                val nodeFile = File(vaultBaseFile, node.name)
+                if (nodeFile.exists()){
+                    nodeFile.delete()
+                }
+                nodeFile.createNewFile()
+                FileOutputStream(nodeFile).use {outputStream ->
+                    fileSystem!!.openFile(node).use{ stream ->
+                        stream.copyTo(outputStream)
+                    }
+                }
+            }
+        } catch (e: Exception){
+            e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: EXPORT_NODE]", it) }
+            e.printStackTrace()
+            throw Exception("[INTERNAL_VIEW_MODEL: EXPORT_NODE] Operation Failed!")
+        }
     }
 
     private fun deleteNode(node: Node){
         // Delete the Given Node
         Log.d("[INTERNAL_VIEW_MODEL: DELETE_NODE]", node.name)
+        try {
+            fileSystem!!.removeNode(node, true)
+        } catch (e: Exception){
+            e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: DELETE_NODE]", it)}
+            e.printStackTrace()
+            throw Exception("[INTERNAL_VIEW_MODEL: DELETE_NODE] Operation Failed!")
+        }
     }
 
     fun addNodeToSelection(node: Node){
@@ -544,50 +673,72 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
      */
     fun optionHandler(node: Node?, option: String, value: String? = null) {
         Log.d("[INTERNAL_VIEW_MODEL: NODE_OPTION_HANDLER]", "Option $option Node $node LinkedListSize ${selectedNodes.size}" )
-        when (option){
-            Option.Select.name -> {
-                if (node != null){
-                    if (node !in selectedNodes){
-                        addNodeToSelection(node)
-                    } else {
-                        removeNodeFromSelection(node)
+        try {
+            when (option){
+                Option.Select.name -> {
+                    if (node != null){
+                        if (node !in selectedNodes){
+                            addNodeToSelection(node)
+                        } else {
+                            removeNodeFromSelection(node)
+                        }
+                    }
+                    // If no nodes are selected after the select operation, disable SelectionView if it was enabled
+                    if (selectedNodes.size == 0){
+                        toggleSelectionMode(false)
                     }
                 }
-                // If no nodes are selected after the select operation, disable SelectionView if it was enabled
-                if (selectedNodes.size == 0){
-                    toggleSelectionMode(false)
+                Option.CreateDirectory.name -> {
+                    if (value != null){
+                        createDirectory(value)
+                    }
+                }
+                Option.Rename.name -> {
+                    if (node != null && value != null){
+                        renameNode(node, value)
+                    }
+                }
+                Option.Delete.name -> {
+                    selectedNodes.forEach { selectedNode ->
+                        deleteNode(selectedNode)
+                    }
+                }
+                Option.Copy.name -> {
+                    /*TODO Implement Copy*/
+                    selectedNodes.forEach{ selectedNode ->
+                        copyNode(selectedNode, pathStack.last())
+                    }
+                }
+                Option.Move.name -> {
+                    /*TODO Implement Move*/
+                    selectedNodes.forEach{ selectedNode ->
+                        moveNode(selectedNode, pathStack.last())
+                    }
+                }
+                Option.SelectAll.name -> {
+                    if (appState.value.appMode != AppMode.Selection.name){
+                        toggleSelectionMode(true)
+                    }
+                    selectAllNodes()
+                }
+                Option.DeSelectAll.name -> {
+                    // Do Nothing As ResetNodeSelection will happen anyways
+                }
+                Option.Export.name -> {
+                    selectedNodes.forEach{ selectedNode ->
+                        exportNode(selectedNode)
+                    }
                 }
             }
-            Option.CreateDirectory.name -> {
-                if (value != null){
-                    createDirectory(value)
-                }
+            if (OptionCategory.ToastOptions.options.filter { o -> o.name == option }.isNotEmpty()){
+                Toast.makeText(app.baseContext, "Operation Successful!", Toast.LENGTH_SHORT).show()
             }
-            Option.Rename.name -> {
-                if (node != null && value != null){
-                    renameNode(node, value)
-                }
-            }
-            Option.Delete.name -> {
-                selectedNodes.forEach { selectedNode ->
-                    deleteNode(selectedNode)
-                }
-            }
-            Option.Copy.name -> {
-                /*TODO Implement Copy*/
-            }
-            Option.Move.name -> {
-                /*TODO Implement Move*/
-            }
-            Option.SelectAll.name -> {
-                if (appState.value.appMode != AppMode.Selection.name){
-                    toggleSelectionMode(true)
-                }
-                selectAllNodes()
-            }
-            Option.DeSelectAll.name -> {
-                // Do Nothing As ResetNodeSelection will happen anyways
-            }
+        } catch (e: Exception){
+            e.message?.let { Log.e("[INTERNAL_VIEW_MODEL: DELETE_NODE]", it)}
+            e.printStackTrace()
+//            if (OptionCategory.ToastOptions.options.filter { o -> o.name == option }.isNotEmpty()){
+//                Toast.makeText(app.baseContext, "Operation Failed!", Toast.LENGTH_SHORT).show()
+//            }
         }
         if (option != Option.Select.name && option != Option.SelectAll.name && option != Option.CreateDirectory.name){
             resetNodeSelection()
@@ -610,24 +761,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun targetSelected(){
-        if (pathStack.isEmpty()){
-            // THIS IS AN ERROR. SHOULD NOT HAPPEN
-        } else {
-            // The last element of the pathStack is the target.
-            val targetDestination = pathStack.last()
-            when (appState.value.selectedOption){
-                Option.Copy.name -> {
-                    selectedNodes.forEach {node -> copyNode(node, targetDestination)}
-                }
-                Option.Move.name -> {
-                    selectedNodes.forEach {node -> moveNode(node, targetDestination)}
-                }
-                null -> {
-                    // ERROR
-                }
-            }
-            resetNodeSelection()
-        }
+        appState.value.selectedOption?.let { optionHandler(null, it) }
     }
 
     fun reset(){
@@ -658,8 +792,19 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun exitVault() {
+        clearCache()
         reset()
+        navigateTo(Route.Start.name)
     }
+
+    private fun clearCache(){
+        app.cacheDir.listFiles()?.forEach { file ->
+            if (file.exists()){
+                file.delete()
+            }
+        }
+    }
+
     init {
         initVaults()
     }

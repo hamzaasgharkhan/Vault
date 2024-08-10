@@ -1,7 +1,9 @@
 package com.fyp.vault.utilities
 
+import FileSystem.Node
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import com.fyp.vault.data.ThumbnailProvider
 import com.fyp.vault.data.fileExtensionToMIME
 import java.io.ByteArrayInputStream
@@ -112,4 +114,21 @@ fun getBitmapFromStream(stream: InputStream): Bitmap{
 
 fun MIMEFromExtension(extension: String): String?{
         return fileExtensionToMIME[extension]
+}
+
+fun getNodeMimeType(node: Node): String?{
+    var extension = node.name.split(".").getOrNull(1) ?: return null
+    extension = ".$extension"
+    val MIME = MIMEFromExtension(extension) ?: return null
+    return MIME.split("/")[0]
+}
+
+fun isNodeVideo(node: Node): Boolean{
+    val type = getNodeMimeType(node) ?: return false
+    return type == "video"
+}
+
+fun isNodeMedia(node: Node): Boolean{
+    val type = getNodeMimeType(node) ?: return false
+    return type == "video" || type == "image"
 }

@@ -104,14 +104,14 @@ fun VaultHomeScreen(
                                     Icon(
                                         imageVector = when (type){
                                             AddNodeType.Media -> Icons.Filled.Image
-                                            AddNodeType.Directory -> Icons.Filled.FolderCopy
+//                                            AddNodeType.Directory -> Icons.Filled.FolderCopy
                                             AddNodeType.File -> Icons.Filled.FileCopy
                                         },
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         contentDescription = stringResource(
                                             when (type){
                                                 AddNodeType.Media -> R.string.add_media_button
-                                                AddNodeType.Directory -> R.string.add_directory_button
+//                                                AddNodeType.Directory -> R.string.add_directory_button
                                                 AddNodeType.File -> R.string.add_file_button
                                             }
                                         )

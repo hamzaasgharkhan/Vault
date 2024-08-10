@@ -29,6 +29,7 @@ fun CreateVaultScreen(
     navigateUp: () -> Unit,
     onVaultCreate: (String, String) -> Unit,
     error: Error?,
+    clearError: () -> Unit,
     modifier: Modifier = Modifier,
     backHandler: () -> Unit
 ){
@@ -69,6 +70,7 @@ fun CreateVaultScreen(
                         loading = false
                     },
                     error = error,
+                    clearError = clearError,
                     modifier = Modifier.align(Alignment.Center)
                 )
                 Button(

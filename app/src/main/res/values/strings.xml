@@ -35,4 +35,9 @@
     <string name="add_file_button">Add File</string>
     <string name="add_directory_button">Add Directory</string>
     <string name="root_directory_name">/</string>
+    <string name="confirm_export_vault_title">Export Vault</string>
+    <string name="confirm_export_vault_description">You are about to export your vault. Only do this if you want to use this vault on another application. Proceeding with this action will export your vault files in their encrypted format. The exported vault can then be used on other devices. Are you sure you wish to proceed?\nNote: The output will be placed at: \n/Documents/Vault/</string>
+    <string name="confirm_vault_deletion_title">Confirm Vault Deletion</string>
+    <string name="confirm_vault_deletion_description">Caution: You are about to permanently delete this vault and all the content within it. Once this operation is performed, the data will not be recoverable. Are you sure you wish to proceed?</string>
+    <string name="directory_empty">Folder Is Empty</string>
 </resources>

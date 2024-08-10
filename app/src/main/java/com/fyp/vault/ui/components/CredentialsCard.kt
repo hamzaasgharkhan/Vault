@@ -32,6 +32,7 @@ fun CredentialsCard(
     onNameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     error: Error?,
+    clearError: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
     isNameEditable: Boolean = true
@@ -47,7 +48,12 @@ fun CredentialsCard(
             placeholder = stringResource(R.string.vault_name_placeholder),
             label = stringResource(R.string.vault_name_placeholder),
             errorLabel = stringResource(R.string.vault_name_placeholder_error),
-            onValueChange = { onNameChange(it) },
+            onValueChange = {
+                onNameChange(it)
+                if (error != null){
+                    clearError()
+                }
+            },
             onSubmit = onSubmit,
             isError = error != null,
             isEnabled = isNameEditable
@@ -58,7 +64,12 @@ fun CredentialsCard(
             placeholder = stringResource(R.string.vault_password_placeholder),
             label =  stringResource(R.string.vault_password_placeholder),
             errorLabel = stringResource(R.string.vault_password_placeholder_error),
-            onValueChange = { onPasswordChange(it) },
+            onValueChange = {
+                onPasswordChange(it)
+                if (error != null){
+                    clearError()
+                }
+            },
             onSubmit = onSubmit,
             isError = error != null,
             isPassword = true

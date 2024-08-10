@@ -36,13 +36,15 @@ enum class Option(val label: String){
     DeSelectAll("Deselect All"),
     SelectTarget("Select Target Destination"),
     Cancel("Cancel"),
-    ExitVault("Exit Vault") // Not related to nodes
+    ExitVault("Exit Vault"),
+    ExportVault("Export Vault"),
+    DeleteVault("Delete Vault")
 }
 
 enum class AddNodeType{
     Media,
     File,
-    Directory
+//    Directory
 }
 
 enum class Error(val description: String){
@@ -88,5 +90,18 @@ enum class OptionCategory(val options: List<Option>){
     TargetPickerModeOptions(listOf(
         Option.CreateDirectory,
         Option.Cancel
+    )),
+    VaultOptions(listOf(
+        Option.ExportVault,
+        Option.DeleteVault
+    )),
+    ToastOptions(listOf(
+        Option.Rename,
+        Option.Copy,
+        Option.Move,
+        Option.Delete,
+        Option.Export,
+        Option.ExportVault,
+        Option.CreateDirectory
     ))
 }

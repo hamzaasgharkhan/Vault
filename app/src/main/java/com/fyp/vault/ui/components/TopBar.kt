@@ -19,6 +19,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -205,6 +206,15 @@ fun VaultTopBarNormalMode(
                             )
                     ) {
                         OptionCategory.TopBarOptions.options.forEach { option ->
+                            DropdownMenuItem(text = {
+                                Text(text = option.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }, onClick = {
+                                showAllOptionsTopBar = false
+                                optionClick(option.name)
+                            })
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onBackground, thickness = 1.dp)
+                        OptionCategory.VaultOptions.options.forEach { option ->
                             DropdownMenuItem(text = {
                                 Text(text = option.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }, onClick = {

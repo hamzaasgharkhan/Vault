@@ -2,6 +2,7 @@ package com.fyp.vault
 
 import android.app.Application
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,6 +23,16 @@ class MainActivity : ComponentActivity() {
                     VaultApp(
                         appViewModel = appViewModel
                     )
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // CLEAR CACHE
+        cacheDir.listFiles()?.forEach { file ->
+            if (file.exists()){
+                file.delete()
             }
         }
     }

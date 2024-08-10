@@ -77,6 +77,26 @@ fun Dialog(
                 selectedNodes = selectedNodes
             )
         }
+        Option.ExportVault.name -> {
+            ConfirmDialog(
+                title = R.string.confirm_export_vault_title,
+                text = R.string.confirm_export_vault_description,
+                selectedOption = selectedOption,
+                onSubmit = onSubmit,
+                closeDialog = closeDialog,
+                selectedNodes = selectedNodes
+            )
+        }
+        Option.DeleteVault.name -> {
+            ConfirmDialog(
+                title = R.string.confirm_vault_deletion_title,
+                text = R.string.confirm_vault_deletion_description,
+                selectedOption = selectedOption,
+                onSubmit = onSubmit,
+                closeDialog = closeDialog,
+                selectedNodes = selectedNodes
+            )
+        }
     }
 }
 

@@ -31,6 +31,7 @@ fun OpenVaultScreen(
     onVaultOpen: (String, String) -> Unit,
     inputName: String,
     error: Error?,
+    clearError: () -> Unit,
     modifier: Modifier = Modifier,
     backHandler: () -> Unit
 ){
@@ -72,6 +73,7 @@ fun OpenVaultScreen(
                         loading = false
                     },
                     error = error,
+                    clearError = clearError,
                     isNameEditable = false
                 )
                 Button(

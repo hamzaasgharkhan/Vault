@@ -76,15 +76,15 @@ fun VaultApp(
 
     )
 
-    val directoryPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree(),
-        onResult = {uri ->
-            if (uri != null){
-                appViewModel.setSelectedUris(listOf(uri))
-                appViewModel.handleDirectorySelection()
-            }
-        }
-    )
+//    val directoryPicker = rememberLauncherForActivityResult(
+//        contract = ActivityResultContracts.OpenDocumentTree(),
+//        onResult = {uri ->
+//            if (uri != null){
+//                appViewModel.setSelectedUris(listOf(uri))
+//                appViewModel.handleDirectorySelection()
+//            }
+//        }
+//    )
 
     val error = rememberSaveable(appViewModel.appState.value.error) {
         mutableStateOf(appViewModel.appState.value.error)
@@ -138,6 +138,7 @@ fun VaultApp(
         ){
             CreateVaultScreen(
                 error = error.value,
+                clearError = { appViewModel.clearError() },
                 navigateUp = {
                     returnToStart(appViewModel, navController)
                 },
@@ -163,6 +164,7 @@ fun VaultApp(
                 /*TODO FIX LATER*/
                     appViewModel.openVault(name, password)
                 },
+                clearError = { appViewModel.clearError() },
                 error = error.value,
                 backHandler = {
                     returnToStart(appViewModel, navController)
@@ -185,9 +187,9 @@ fun VaultApp(
                 onAddNode = { option ->
                     /*TODO Currently no implementation is in place for this method.*/
                     when (option){
-                        AddNodeType.Directory.name -> {
-                            directoryPicker.launch(null)
-                        }
+//                        AddNodeType.Directory.name -> {
+//                            directoryPicker.launch(null)
+//                        }
                         AddNodeType.File.name -> {
                             filePicker.launch(
                                 arrayOf("*/*")
@@ -221,7 +223,9 @@ fun VaultApp(
                     Log.d("[VAULT_APP: OPTION_CLICK]","Option: $selectedOption")
                     when (selectedOption){
                         Option.CreateDirectory.name,
-                        Option.Delete.name -> {
+                        Option.Delete.name,
+                        Option.ExportVault.name,
+                        Option.DeleteVault.name -> {
                             appViewModel.setShowDialogOption(selectedOption)
                             appViewModel.toggleShowDialog(true)
                         }
@@ -239,13 +243,6 @@ fun VaultApp(
                         Option.Move.name -> {
                             appViewModel.setSelectedOption(selectedOption)
                             appViewModel.setAppMode(AppMode.TargetPicker.name)
-                            /*TODO
-                            *  Set the selected option through the viewModel. Create a method there
-                            *  Change the app mode to TargetPicker Mode.
-                            *
-                            * OTHER
-                            * Fix cancel button
-                            * */
                         }
                         Option.Cancel.name -> {
                             appViewModel.resetNodeSelection()
@@ -254,7 +251,7 @@ fun VaultApp(
                             appViewModel.targetSelected()
                         }
                         Option.Export.name -> {
-
+                            appViewModel.optionHandler(null, selectedOption)
                         }
                     }
                 },
@@ -280,6 +277,14 @@ fun VaultApp(
                         Option.ExitVault.name -> {
                             appViewModel.exitVault()
                             returnToStart(appViewModel, navController)
+                        }
+                        Option.ExportVault.name -> {
+                            /*TODO Implement a method in the view model.*/
+                            appViewModel.exportVault()
+                        }
+                        Option.DeleteVault.name -> {
+                            /*TODO Implement a method in the view model.*/
+                            appViewModel.deleteVault()
                         }
                     }
                 },
